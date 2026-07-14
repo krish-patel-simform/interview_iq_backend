@@ -1,7 +1,7 @@
 import "./config.ts";
 
 import express, { type Request, type Response } from "express";
-import AIRouter from "./routes/aiRoutes.js";
+import AIRouter from "./routes/aiRoutes.ts";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
