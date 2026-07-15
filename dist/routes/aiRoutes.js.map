@@ -1,0 +1,1 @@
+{"version":3,"file":"aiRoutes.js","sourceRoot":"","sources":["../../src/routes/aiRoutes.ts"],"names":[],"mappings":"AAAA,OAAO,OAAO,MAAM,SAAS,CAAC;AAC9B,OAAO,EAAE,aAAa,EAAE,MAAM,+BAA+B,CAAC;AAE9D,MAAM,QAAQ,GAAG,OAAO,CAAC,MAAM,EAAE,CAAC;AAElC,QAAQ,CAAC,KAAK,CAAC,kBAAkB,CAAC,CAAC,IAAI,CAAC,aAAa,CAAC,CAAC;AAEvD,eAAe,QAAQ,CAAC"}
