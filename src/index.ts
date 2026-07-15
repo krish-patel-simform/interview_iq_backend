@@ -2,9 +2,12 @@ import "./config.ts";
 
 import express, { type Request, type Response } from "express";
 import AIRouter from "./routes/aiRoutes.ts";
+import cors from "cors";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+
+app.use(cors({ origin: "*" }));
 
 app.use(express.json());
 app.use("/api/ai", AIRouter);
