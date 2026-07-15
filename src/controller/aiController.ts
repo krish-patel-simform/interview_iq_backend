@@ -6,8 +6,6 @@ import { candidatesState, client } from "../config.js";
 // In a production environment, conversation history should be stored in a database (e.g., Redis, PostgreSQL)
 // For demonstration and current scope, we use a simple in-memory Map keyed by a sessionId.
 
-// const sessions = new Map<string, ChatMessage[]>();
-
 /**
  * Controller to handle AI Interview interactions via OpenRouter (DeepSeek)
  */
@@ -388,11 +386,48 @@ interface RemoveCandidateBody {
 }
 export const removeCandaidate = async (
   req: Request<{}, {}, RemoveCandidateBody>,
-  res: Response<BasicCandidateInterviewResponse>,
+  res: Response,
 ) => {
-  const { userId } = req.body;
+  try {
+    const { userId } = req.body;
 
-  candidatesState.delete(userId);
+    const candidateState = candidatesState.get(userId);
+    if (!candidateState) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Candidate not found" });
+    }
 
-  return res.status(200).json({ success: true });
+    const history = candidateState.interviewHistory;
+
+    // Add a final user message asking for feedback
+    history.push({
+      role: "user",
+      content:
+        "The interview has now ended. Please provide a detailed feedback and analysis summary for the candidate based on this interview. Include strengths, areas for improvement, and an overall rating.",
+    });
+
+    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [...history];
+
+    // Generate feedback using OpenRouter → DeepSeek
+    const completion = await client.chat.completions.create({
+      model: "deepseek/deepseek-chat",
+      messages,
+    });
+
+    const feedback =
+      completion.choices[0]?.message?.content ||
+      "Feedback could not be generated.";
+
+    candidatesState.delete(userId);
+
+    return res.status(200).json({ success: true, feedback });
+  } catch (error: any) {
+    console.error("Error generating feedback:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to generate feedback.",
+      details: error.message,
+    });
+  }
 };
