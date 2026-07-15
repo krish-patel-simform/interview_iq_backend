@@ -3,6 +3,7 @@ import "./config.js";
 import express, { type Request, type Response } from "express";
 import AIRouter from "./routes/aiRoutes.js";
 import cors from "cors";
+import type { CandidateState } from "./types.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
