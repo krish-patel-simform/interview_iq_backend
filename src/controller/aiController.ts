@@ -543,6 +543,7 @@ export const setupCandidateInterview = async (
 interface RemoveCandidateBody {
   userId: string;
 }
+
 export const removeCandaidate = async (
   req: Request<{}, {}, RemoveCandidateBody>,
   res: Response,
@@ -551,38 +552,135 @@ export const removeCandaidate = async (
     const { userId } = req.body;
 
     const candidateState = candidatesState.get(userId);
+
     if (!candidateState) {
-      return res
-        .status(404)
-        .json({ success: false, error: "Candidate not found" });
+      return res.status(404).json({
+        success: false,
+        error: "Candidate not found",
+      });
     }
 
-    const history = candidateState.interviewHistory;
+    // Copy the interview transcript.
+    // Do NOT mutate the original history.
+    const transcript = [...candidateState.interviewHistory];
 
-    // Add a final user message asking for feedback
-    history.push({
-      role: "user",
-      content:
-        "The interview has now ended. Please provide a detailed feedback and analysis summary for the candidate based on this interview. Include strengths, areas for improvement, and an overall rating.",
-    });
+    const evaluationSystemPrompt = `
+You are an independent Senior Technical Interview Evaluator.
 
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [...history];
+Your ONLY responsibility is to evaluate the interview transcript.
 
-    // Generate feedback using OpenRouter → DeepSeek
+You are NOT the interviewer.
+
+You must NEVER hallucinate.
+
+You must NEVER fabricate strengths.
+
+You must NEVER fabricate weaknesses.
+
+You must NEVER assume knowledge.
+
+Every conclusion MUST come directly from the candidate's responses.
+
+If the candidate did not answer enough questions, clearly state that there is insufficient evidence to evaluate their technical ability.
+
+Do NOT reward:
+
+- politeness
+- confidence
+- effort
+
+Only reward demonstrated technical knowledge.
+
+If the candidate repeatedly answered:
+
+- I don't know
+- I'm not sure
+- skipped questions
+
+the score should reflect that.
+
+For every Strength and Weakness include the evidence from the interview.
+
+If there is no evidence write:
+
+"No observable evidence."
+
+Return feedback in this format:
+
+# Interview Summary
+
+## Technical Knowledge
+Score: /10
+
+Evidence:
+
+## Problem Solving
+Score: /10
+
+Evidence:
+
+## Communication
+Score: /10
+
+Evidence:
+
+## Strengths
+
+## Weaknesses
+
+## Recommended Topics
+
+## Hiring Recommendation
+
+Choose ONE:
+
+- Strong Hire
+- Hire
+- Borderline
+- No Hire
+
+## Overall Score
+
+Score: /100
+
+The score MUST be based ONLY on demonstrated knowledge.
+
+Never invent information.
+`;
+
+    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+      {
+        role: "system",
+        content: evaluationSystemPrompt,
+      },
+
+      ...transcript,
+
+      {
+        role: "user",
+        content:
+          "The interview has ended. Analyze the entire transcript and generate the evaluation.",
+      },
+    ];
+
     const completion = await client.chat.completions.create({
       model: "deepseek/deepseek-chat",
       messages,
     });
 
     const feedback =
-      completion.choices[0]?.message?.content ||
-      "Feedback could not be generated.";
+      completion.choices[0]?.message?.content ??
+      "Unable to generate interview feedback.";
 
     candidatesState.delete(userId);
 
-    return res.status(200).json({ success: true, feedback });
+    return res.status(200).json({
+      success: true,
+      feedback,
+    });
   } catch (error: any) {
-    console.error("Error generating feedback:", error);
+    console.error(error);
+
     return res.status(500).json({
       success: false,
       error: "Failed to generate feedback.",
