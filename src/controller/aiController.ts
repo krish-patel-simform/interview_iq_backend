@@ -590,3 +590,7 @@ export const removeCandaidate = async (
     });
   }
 };
+
+export const getAllCandidates = async (req: Request, res: Response) => {
+  return res.status(200).json({ state: Object.fromEntries(candidatesState) });
+};
